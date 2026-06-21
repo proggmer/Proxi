@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Proxy Host · ENI</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{background:#0b0f1a;color:#e6edf3;font-family:monospace;padding:2rem;display:flex;justify-content:center;}
+    .card{max-width:900px;width:100%;background:#161b22;border:1px solid #30363d;border-radius:24px;padding:2rem;}
+    h1{font-size:28px;display:flex;gap:12px;margin-bottom:0.2rem;}
+    .sub{color:#8b949e;border-left:3px solid #238636;padding-left:14px;margin-bottom:1.8rem;}
+    .box{background:#0d1117;border:1px solid #21262d;border-radius:14px;padding:1.2rem;margin:0.8rem 0;}
+    .box .label{color:#8b949e;font-size:12px;text-transform:uppercase;}
+    .value{font-size:22px;color:#58a6ff;word-break:break-all;}
+    .proxy-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;margin:0.8rem 0;}
+    .proxy-item{background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:0.5rem 0.8rem;display:flex;justify-content:space-between;align-items:center;}
+    .proxy-item .addr{font-size:16px;color:#58a6ff;}
+    .btn{background:#21262d;border:1px solid #30363d;color:#c9d1d9;padding:0.4rem 1rem;border-radius:6px;cursor:pointer;}
+    .btn:hover{background:#30363d;border-color:#58a6ff;}
+    .btn.primary{background:#238636;border-color:#238636;color:#fff;}
+    .btn.primary:hover{background:#2ea043;}
+    .footer{margin-top:1.8rem;color:#8b949e;border-top:1px solid #21262d;padding-top:1rem;}
+  </style>
+</head>
+<body>
+<div class="card">
+  <h1>🕵️ Proxy Host</h1>
+  <div class="sub">⚡ Серверный IP + готовые строки для HTTP, HTTPS, SOCKS4, SOCKS5</div>
+
+  <div class="box" style="border-color:#238636;">
+    <div class="label">🖥️ Серверный IP</div>
+    <div class="value" id="serverIp">Загрузка...</div>
+    <div style="font-size:13px;color:#8b949e;margin-top:0.2rem;">Регион: <span id="edgeRegion">—</span></div>
+  </div>
+
+  <div class="box">
+    <div class="label">🌍 Геолокация</div>
+    <div id="geoInfo">Страна: <span id="geoCountry">—</span><br>Город: <span id="geoCity">—</span><br>Провайдер: <span id="geoIsp">—</span></div>
+  </div>
+
+  <div class="box" style="border-color:#238636;">
+    <div class="label">📋 Готовые строки для софтов</div>
+    <div class="proxy-grid" id="proxyGrid">
+      <div class="proxy-item"><span>HTTP</span><span class="addr" id="p_http">—</span><button class="btn" onclick="copyProxy('p_http')">📋</button></div>
+      <div class="proxy-item"><span>HTTPS</span><span class="addr" id="p_https">—</span><button class="btn" onclick="copyProxy('p_https')">📋</button></div>
+      <div class="proxy-item"><span>SOCKS4</span><span class="addr" id="p_socks4">—</span><button class="btn" onclick="copyProxy('p_socks4')">📋</button></div>
+      <div class="proxy-item"><span>SOCKS5</span><span class="addr" id="p_socks5">—</span><button class="btn" onclick="copyProxy('p_socks5')">📋</button></div>
+      <div class="proxy-item" style="grid-column:1/-1;border-color:#30363d;"><span>🧩 IP</span><span class="addr" id="p_iponly">—</span><button class="btn" onclick="copyProxy('p_iponly')">📋</button></div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:0.7rem;flex-wrap:wrap;margin:1rem 0;">
+    <button class="btn primary" onclick="fetchAll()">🔄 Обновить</button>
+    <button class="btn" onclick="copyAll()">📋 Копировать всё</button>
+  </div>
+
+  <div class="footer">
+    <code>?txt</code> — текстовый список для софтов<br>
+    <code>?json</code> — JSON
+  </div>
+</div>
+
+<script>
+async function fetchAll() {
+  try {
+    const res = await fetch('/api/ip');
+    const data = await res.json();
+    const ip = data.server_ip || '—';
+    document.getElementById('serverIp').textContent = ip;
+    document.getElementById('edgeRegion').textContent = data.headers?.['x-vercel-edge-region'] || '—';
+    document.getElementById('geoCountry').textContent = data.geo?.country || '—';
+    document.getElementById('geoCity').textContent = data.geo?.city || '—';
+    document.getElementById('geoIsp').textContent = data.geo?.isp || data.geo?.org || '—';
+    ['http','https','socks4','socks5','iponly'].forEach(id => {
+      const el = document.getElementById('p_' + id);
+      if (id === 'http') el.textContent = ip + ':80';
+      else if (id === 'https') el.textContent = ip + ':443';
+      else if (id === 'socks4' || id === 'socks5') el.textContent = ip + ':1080';
+      else el.textContent = ip;
+    });
+  } catch {
+    document.getElementById('serverIp').textContent = '❌ ошибка (нужен /api/ip)';
+  }
+}
+function copyProxy(id) {
+  const el = document.getElementById(id);
+  if (!el || el.textContent === '—') return;
+  navigator.clipboard.writeText(el.textContent).then(() => alert('Скопировано: ' + el.textContent));
+}
+function copyAll() {
+  const http = document.getElementById('p_http').textContent;
+  const https = document.getElementById('p_https').textContent;
+  const s4 = document.getElementById('p_socks4').textContent;
+  const s5 = document.getElementById('p_socks5').textContent;
+  const ip = document.getElementById('p_iponly').textContent;
+  navigator.clipboard.writeText(`HTTP: ${http}\nHTTPS: ${https}\nSOCKS4: ${s4}\nSOCKS5: ${s5}\nIP: ${ip}`).then(() => alert('Скопировано всё'));
+}
+fetchAll();
+setInterval(fetchAll, 30000);
+</script>
+</body>
+</html>
